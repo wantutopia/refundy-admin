@@ -1,6 +1,5 @@
 import { getFirestore, collection, onSnapshot, query, where, type DocumentData, Timestamp } from 'firebase/firestore';
 import { ref, type Ref } from 'vue';
-import { auth } from './firebase';
 
 const db = getFirestore();
 

@@ -71,6 +71,7 @@ const generateTaobaoUrl = (itemId: string, skuId?: string) => {
           <tr>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문 ID</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[150px]">상품명</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU ID</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">옵션</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">단가</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수량</th>
@@ -94,7 +95,7 @@ const generateTaobaoUrl = (itemId: string, skuId?: string) => {
                   <div class="ml-4 min-w-0">
                     <div class="text-sm font-medium">
                       <a
-                        :href="generateTaobaoUrl(order.itemId, order.propPath)"
+                        :href="generateTaobaoUrl(order.itemId, order.skuId)"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="text-indigo-600 hover:text-indigo-900 overflow-hidden hover:overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 block"
@@ -106,6 +107,9 @@ const generateTaobaoUrl = (itemId: string, skuId?: string) => {
                     <div class="text-sm text-gray-500 truncate">{{ order.seller }}</div>
                   </div>
                 </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ order.skuId || '-' }}
               </td>
               <td class="px-6 py-4 text-sm text-gray-500">
                 <div v-if="order.specs && order.specs.length > 0" class="space-y-1">
