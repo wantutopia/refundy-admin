@@ -22,6 +22,7 @@ export interface TaobaoOrder {
     timestamp: string;
   }>;
   productName: string;
+  skuId: string;
   propPath: string;
   quantity: number;
   seller: string;
