@@ -6,6 +6,7 @@ import {
   type User
 } from 'firebase/auth';
 import { auth } from './firebase';
+import { ref } from 'vue';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -28,6 +29,12 @@ export const signOut = async () => {
   }
 };
 
-export const initializeAuthListener = (callback: (user: User | null) => void) => {
-  return onAuthStateChanged(auth, callback);
+// 현재 로그인된 사용자 상태를 전역으로 관리
+export const currentUser = ref<User | null>(null);
+
+// 인증 상태 변경 감지 함수
+export const initializeAuthState = () => {
+  return onAuthStateChanged(auth, (user) => {
+    currentUser.value = user;
+  });
 }; 
