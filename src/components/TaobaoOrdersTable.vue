@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
-import { useTaobaoOrders, type TaobaoOrdersDoc } from '@/firebase/firestore';
+import { useTaobaoOrders, type TaobaoOrdersDoc, updateOrderManualPrice } from '@/firebase/firestore';
 import { formatDate } from '@/utils/dateFormatter';
+import { Timestamp } from 'firebase/firestore';
 
 const selectedUserId = ref<string | null>(null);
 const { 
@@ -36,6 +37,53 @@ const generateTaobaoUrl = (itemId: string, skuId?: string) => {
   const baseUrl = `https://item.taobao.com/item.htm?id=${itemId}`;
   return skuId ? `${baseUrl}&skuId=${skuId}` : baseUrl;
 };
+
+const sortedOrders = computed(() => {
+  return orders.value.map(doc => ({
+    ...doc,
+    orders: [...doc.orders].sort((a, b) => {
+      const dateA = a.orderDate?.toDate().getTime() || 0;
+      const dateB = b.orderDate?.toDate().getTime() || 0;
+      return dateB - dateA; // 내림차순 정렬
+    })
+  }));
+});
+
+// 수동 가격 입력을 위한 상태 관리
+const manualPrices = ref<{ [key: string]: string }>({});
+const updateStatus = ref<{ [key: string]: 'idle' | 'loading' | 'success' | 'error' }>({});
+
+// 수동 가격 업데이트 핸들러
+const handleManualPriceUpdate = async (order: TaobaoOrder, userId: string) => {
+  const priceValue = manualPrices.value[order.orderId];
+  if (!priceValue) return;
+
+  const numericPrice = parseFloat(priceValue);
+  if (isNaN(numericPrice)) return;
+
+  updateStatus.value[order.orderId] = 'loading';
+  
+  try {
+    await updateOrderManualPrice(
+      userId,
+      order.orderId,
+      numericPrice
+    );
+    updateStatus.value[order.orderId] = 'success';
+    setTimeout(() => {
+      updateStatus.value[order.orderId] = 'idle';
+    }, 2000);
+  } catch (error) {
+    updateStatus.value[order.orderId] = 'error';
+    console.error('Failed to update manual price:', error);
+  }
+};
+
+// 날짜 포맷팅 함수
+const formatManualPriceDate = (timestamp: Timestamp | undefined) => {
+  if (!timestamp) return '-';
+  return formatDate(timestamp.toDate());
+};
 </script>
 
 <template>
@@ -69,23 +117,26 @@ const generateTaobaoUrl = (itemId: string, skuId?: string) => {
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문 ID</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[150px]">상품명</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU ID</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">옵션</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">단가</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수량</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">배송비</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">총 결제금액</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문일</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[100px] break-words">주문 ID</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[150px]">상품명</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[80px] break-words">SKU ID</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[150px]">옵션</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수동 가격</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">총 결제금액</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">배송비</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">단가</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수량</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문일</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수동 가격 입력일</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-          <template v-for="doc in orders" :key="doc.userId">
+          <template v-for="doc in sortedOrders" :key="doc.userId">
             <tr v-for="order in doc.orders" :key="order.orderId">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.orderId }}</td>
-              <td class="px-6 py-4 w-[150px] group">
+              <td class="px-3 py-4 text-sm text-gray-500 max-w-[100px]">
+                <div class="line-clamp-2 break-words">{{ order.orderId }}</div>
+              </td>
+              <td class="px-3 py-4 w-[150px] group">
                 <div class="flex items-center">
                   <img 
                     :src="order.imageUrl" 
@@ -108,41 +159,61 @@ const generateTaobaoUrl = (itemId: string, skuId?: string) => {
                   </div>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ order.skuId || '-' }}
+              <td class="px-3 py-4 text-sm text-gray-500 max-w-[80px]">
+                <div class="line-clamp-2 break-words">{{ order.skuId || '-' }}</div>
               </td>
-              <td class="px-6 py-4 text-sm text-gray-500">
+              <td class="px-3 py-4 text-sm text-gray-500 max-w-[150px]">
                 <div v-if="order.specs && order.specs.length > 0" class="space-y-1">
-                  <div v-for="(spec, index) in order.specs" :key="index" class="text-xs">
+                  <div v-for="(spec, index) in order.specs" :key="index" class="text-xs break-words">
                     <span class="font-medium">{{ spec.name }}:</span> {{ spec.value }}
                   </div>
                 </div>
                 <span v-else class="text-gray-400">-</span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                ¥{{ order.price.toLocaleString() }}
+              <td class="px-3 py-4 whitespace-nowrap text-sm">
+                <div class="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    v-model="manualPrices[order.orderId]"
+                    placeholder="가격 입력"
+                    class="w-24 px-2 py-1 border rounded focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <button
+                    @click="handleManualPriceUpdate(order, doc.userId)"
+                    :disabled="updateStatus[order.orderId] === 'loading'"
+                    class="px-3 py-1 text-xs rounded-md"
+                    :class="{
+                      'bg-indigo-600 text-white hover:bg-indigo-700': updateStatus[order.orderId] !== 'loading',
+                      'bg-gray-400 cursor-not-allowed': updateStatus[order.orderId] === 'loading'
+                    }"
+                  >
+                    <span v-if="updateStatus[order.orderId] === 'loading'">저장중...</span>
+                    <span v-else-if="updateStatus[order.orderId] === 'success'">완료!</span>
+                    <span v-else-if="updateStatus[order.orderId] === 'error'">오류</span>
+                    <span v-else>저장</span>
+                  </button>
+                </div>
+                <div v-if="order.manualPrice" class="mt-1 text-sm text-gray-600">
+                  현재: ¥{{ order.manualPrice.toLocaleString() }}
+                </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ order.quantity.toLocaleString() }}개
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                ¥{{ order.shippingFee.toLocaleString() }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                 ¥{{ order.totalOrderPrice.toLocaleString() }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                  :class="{
-                    'bg-green-100 text-green-800': order.status === '배송완료',
-                    'bg-yellow-100 text-yellow-800': order.status === '배송중',
-                    'bg-red-100 text-red-800': order.status === '신청 중'
-                  }">
-                  {{ order.status }}
-                </span>
+              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                ¥{{ order.shippingFee.toLocaleString() }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                ¥{{ order.price.toLocaleString() }}
+              </td>
+              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ order.quantity.toLocaleString() }}개
+              </td>
+              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ formatDate(order.orderDate?.toDate()) }}
+              </td>
+              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ formatManualPriceDate(order.manualPriceUpdatedAt) }}
               </td>
             </tr>
           </template>

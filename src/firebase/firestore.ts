@@ -1,7 +1,9 @@
-import { getFirestore, collection, onSnapshot, query, where, type DocumentData, Timestamp } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, query, where, doc, updateDoc, Timestamp, getDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { ref, type Ref } from 'vue';
 
 const db = getFirestore();
+const auth = getAuth();
 
 export interface TaobaoOrder {
   createdAt: Date;
@@ -33,6 +35,9 @@ export interface TaobaoOrder {
   status: string;
   totalOrderPrice: number;
   updatedAt: Date;
+  manualPrice?: number;
+  manualPriceUpdatedAt?: Timestamp;
+  manualPriceUpdateUid?: string;
 }
 
 export interface TaobaoOrdersDoc {
@@ -110,4 +115,50 @@ export const useTaobaoOrders = (selectedUserId: Ref<string | null>) => {
     subscribeToUserIds,
     cleanup,
   };
+};
+
+export const updateOrderManualPrice = async (
+  userId: string,
+  orderId: string,
+  manualPrice: number,
+) => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('로그인이 필요합니다.');
+    }
+
+    const docRef = doc(db, 'taobaoOrders', userId);
+    
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      throw new Error('Document not found');
+    }
+
+    const data = docSnap.data();
+    const orders = data.orders || [];
+    
+    const now = Timestamp.now();
+    
+    const updatedOrders = orders.map((order: TaobaoOrder) => {
+      if (order.orderId === orderId) {
+        return {
+          ...order,
+          manualPrice,
+          manualPriceUpdatedAt: now,
+          manualPriceUpdateUid: currentUser.uid
+        };
+      }
+      return order;
+    });
+
+    await updateDoc(docRef, {
+      orders: updatedOrders
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error updating manual price:', error);
+    throw error;
+  }
 }; 
