@@ -10,7 +10,7 @@ const {
   error, 
   allUserIds,
   subscribeToOrders, 
-  subscribeToUserIds,
+  subscribeToUserIds, 
   cleanup 
 } = useTaobaoOrders(selectedUserId);
 
@@ -31,6 +31,11 @@ onMounted(() => {
 onUnmounted(() => {
   cleanup();
 });
+
+const generateTaobaoUrl = (itemId: string, skuId?: string) => {
+  const baseUrl = `https://item.taobao.com/item.htm?id=${itemId}`;
+  return skuId ? `${baseUrl}&skuId=${skuId}` : baseUrl;
+};
 </script>
 
 <template>
@@ -65,9 +70,12 @@ onUnmounted(() => {
         <thead class="bg-gray-50">
           <tr>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문 ID</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상품명</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">가격</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[150px]">상품명</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">옵션</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">단가</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수량</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">배송비</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">총 결제금액</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문일</th>
           </tr>
@@ -76,20 +84,48 @@ onUnmounted(() => {
           <template v-for="doc in orders" :key="doc.userId">
             <tr v-for="order in doc.orders" :key="order.orderId">
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.orderId }}</td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-6 py-4 w-[150px] group">
                 <div class="flex items-center">
-                  <img :src="order.imageUrl" :alt="order.productName" class="h-10 w-10 rounded-full">
-                  <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">{{ order.productName }}</div>
-                    <div class="text-sm text-gray-500">{{ order.seller }}</div>
+                  <img 
+                    :src="order.imageUrl" 
+                    :alt="order.productName" 
+                    class="h-10 w-10 flex-shrink-0 rounded-full"
+                  >
+                  <div class="ml-4 min-w-0">
+                    <div class="text-sm font-medium">
+                      <a
+                        :href="generateTaobaoUrl(order.itemId, order.propPath)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-indigo-600 hover:text-indigo-900 overflow-hidden hover:overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 block"
+                        :title="order.productName"
+                      >
+                        {{ order.productName }}
+                      </a>
+                    </div>
+                    <div class="text-sm text-gray-500 truncate">{{ order.seller }}</div>
                   </div>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                ¥{{ order.currentPrice }}
+              <td class="px-6 py-4 text-sm text-gray-500">
+                <div v-if="order.specs && order.specs.length > 0" class="space-y-1">
+                  <div v-for="(spec, index) in order.specs" :key="index" class="text-xs">
+                    <span class="font-medium">{{ spec.name }}:</span> {{ spec.value }}
+                  </div>
+                </div>
+                <span v-else class="text-gray-400">-</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ order.quantity }}
+                ¥{{ order.price.toLocaleString() }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ order.quantity.toLocaleString() }}개
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ¥{{ order.shippingFee.toLocaleString() }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                ¥{{ order.totalOrderPrice.toLocaleString() }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
