@@ -1,0 +1,1 @@
+{"root":["./src/main.ts","./src/vite-env.d.ts","./src/config/firebase.config.ts","./src/firebase/auth.ts","./src/firebase/firebase.ts","./src/firebase/firestore.ts","./src/utils/dateformatter.ts","./src/app.vue","./src/components/googlelogin.vue","./src/components/helloworld.vue","./src/components/taobaoorderstable.vue"],"version":"5.6.3"}

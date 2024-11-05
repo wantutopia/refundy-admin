@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
-import { useTaobaoOrders, type TaobaoOrdersDoc, updateOrderManualPrice } from '@/firebase/firestore';
+import { useTaobaoOrders, updateOrderManualPrice } from '@/firebase/firestore';
 import { formatDate } from '@/utils/dateFormatter';
 import { Timestamp } from 'firebase/firestore';
 
@@ -14,10 +14,6 @@ const {
   subscribeToUserIds, 
   cleanup 
 } = useTaobaoOrders(selectedUserId);
-
-const handleUserSelect = (userId: string | null) => {
-  selectedUserId.value = userId;
-};
 
 watch(selectedUserId, () => {
   cleanup();
@@ -54,7 +50,7 @@ const manualPrices = ref<{ [key: string]: string }>({});
 const updateStatus = ref<{ [key: string]: 'idle' | 'loading' | 'success' | 'error' }>({});
 
 // 수동 가격 업데이트 핸들러
-const handleManualPriceUpdate = async (order: TaobaoOrder, userId: string) => {
+const handleManualPriceUpdate = async (order: any, userId: string) => {
   const priceValue = manualPrices.value[order.orderId];
   if (!priceValue) return;
 
@@ -122,7 +118,7 @@ const formatManualPriceDate = (timestamp: Timestamp | undefined) => {
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[80px] break-words">SKU ID</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[150px]">옵션</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수동 가격</th>
-            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">총 결제금액</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">총 ���제금액</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">배송비</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">단가</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수량</th>
