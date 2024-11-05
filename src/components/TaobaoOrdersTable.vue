@@ -1,0 +1,113 @@
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
+import { useTaobaoOrders, type TaobaoOrdersDoc } from '@/firebase/firestore';
+import { formatDate } from '@/utils/dateFormatter';
+
+const selectedUserId = ref<string | null>(null);
+const { 
+  orders, 
+  loading, 
+  error, 
+  allUserIds,
+  subscribeToOrders, 
+  subscribeToUserIds,
+  cleanup 
+} = useTaobaoOrders(selectedUserId);
+
+const handleUserSelect = (userId: string | null) => {
+  selectedUserId.value = userId;
+};
+
+watch(selectedUserId, () => {
+  cleanup();
+  subscribeToOrders();
+});
+
+onMounted(() => {
+  subscribeToOrders();
+  subscribeToUserIds();
+});
+
+onUnmounted(() => {
+  cleanup();
+});
+</script>
+
+<template>
+  <div class="p-4">
+    <!-- 사용자 선택 필터 -->
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-gray-700 mb-2">사용자 필터</label>
+      <select
+        v-model="selectedUserId"
+        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+      >
+        <option :value="null">전체 보기</option>
+        <option v-for="userId in allUserIds" :key="userId" :value="userId">
+          {{ userId }}
+        </option>
+      </select>
+    </div>
+
+    <!-- 로딩 상태 -->
+    <div v-if="loading" class="text-center py-4">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto"></div>
+    </div>
+
+    <!-- 에러 메시지 -->
+    <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      {{ error }}
+    </div>
+
+    <!-- 주문 테이블 -->
+    <div v-if="!loading && !error" class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문 ID</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상품명</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">가격</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수량</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문일</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <template v-for="doc in orders" :key="doc.userId">
+            <tr v-for="order in doc.orders" :key="order.orderId">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.orderId }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <img :src="order.imageUrl" :alt="order.productName" class="h-10 w-10 rounded-full">
+                  <div class="ml-4">
+                    <div class="text-sm font-medium text-gray-900">{{ order.productName }}</div>
+                    <div class="text-sm text-gray-500">{{ order.seller }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ¥{{ order.currentPrice }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ order.quantity }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                  :class="{
+                    'bg-green-100 text-green-800': order.status === '배송완료',
+                    'bg-yellow-100 text-yellow-800': order.status === '배송중',
+                    'bg-red-100 text-red-800': order.status === '신청 중'
+                  }">
+                  {{ order.status }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ formatDate(order.orderDate?.toDate()) }}
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</template> 
