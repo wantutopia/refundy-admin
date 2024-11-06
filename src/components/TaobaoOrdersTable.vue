@@ -9,7 +9,6 @@ const {
   orders, 
   loading, 
   error, 
-  allUserIds,
   subscribeToOrders, 
   subscribeToUserIds, 
   cleanup 
@@ -92,8 +91,12 @@ const formatManualPriceDate = (timestamp: Timestamp | undefined) => {
         class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
       >
         <option :value="null">전체 보기</option>
-        <option v-for="userId in allUserIds" :key="userId" :value="userId">
-          {{ userId }}
+        <option 
+          v-for="doc in orders" 
+          :key="doc.userId" 
+          :value="doc.userId"
+        >
+          {{ doc.userId }} - {{ doc.userDisplayName || '이름 없음' }}
         </option>
       </select>
     </div>

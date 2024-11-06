@@ -1,4 +1,4 @@
-import { getFirestore, collection, onSnapshot, query, where, doc, updateDoc, Timestamp, getDoc, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, query, where, doc, updateDoc, Timestamp, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { ref, type Ref } from 'vue';
 
