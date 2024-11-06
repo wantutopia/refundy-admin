@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { initializeAuthState, currentUser } from '@/firebase/auth';
 import GoogleLogin from '@/components/GoogleLogin.vue';
 import TaobaoOrdersTable from '@/components/TaobaoOrdersTable.vue';
+import Dashboard from '@/components/Dashboard.vue';
 
 let unsubscribe: (() => void) | null = null;
+const currentMenu = ref<'dashboard' | 'orders'>('dashboard');
 
 onMounted(() => {
   unsubscribe = initializeAuthState();
@@ -36,9 +38,43 @@ onUnmounted(() => {
           </h1>
           <GoogleLogin />
         </div>
+
+        <!-- 메뉴 네비게이션 -->
+        <nav class="bg-white shadow rounded-lg">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-start h-16">
+              <div class="flex">
+                <button
+                  @click="currentMenu = 'dashboard'"
+                  :class="[
+                    'inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium',
+                    currentMenu === 'dashboard'
+                      ? 'border-indigo-500 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ]"
+                >
+                  대시보드
+                </button>
+                <button
+                  @click="currentMenu = 'orders'"
+                  :class="[
+                    'ml-8 inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium',
+                    currentMenu === 'orders'
+                      ? 'border-indigo-500 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ]"
+                >
+                  주문 관리
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
         
+        <!-- 컨텐츠 영역 -->
         <div class="bg-white rounded-lg shadow p-6">
-          <TaobaoOrdersTable />
+          <Dashboard v-if="currentMenu === 'dashboard'" />
+          <TaobaoOrdersTable v-else />
         </div>
       </div>
     </div>
