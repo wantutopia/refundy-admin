@@ -35,14 +35,20 @@ const generateTaobaoUrl = (itemId: string, skuId?: string) => {
 };
 
 const sortedOrders = computed(() => {
-  return orders.value.map(doc => ({
-    ...doc,
-    orders: [...doc.orders].sort((a, b) => {
-      const dateA = a.orderDate?.toDate().getTime() || 0;
-      const dateB = b.orderDate?.toDate().getTime() || 0;
-      return dateB - dateA; // 내림차순 정렬
-    })
-  }));
+  // 모든 주문을 하나의 배열로 평탄화
+  const allOrders = orders.value.flatMap(doc => 
+    doc.orders.map(order => ({
+      ...order,
+      userId: doc.userId
+    }))
+  );
+
+  // 날짜순으로 정렬
+  return allOrders.sort((a, b) => {
+    const dateA = a.orderDate?.toDate().getTime() || 0;
+    const dateB = b.orderDate?.toDate().getTime() || 0;
+    return dateB - dateA;
+  });
 });
 
 // 수동 가격 입력을 위한 상태 관리
@@ -113,6 +119,7 @@ const formatManualPriceDate = (timestamp: Timestamp | undefined) => {
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[50px]">순번</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[100px] break-words">주문 ID</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[150px]">상품명</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[80px] break-words">SKU ID</th>
@@ -127,92 +134,93 @@ const formatManualPriceDate = (timestamp: Timestamp | undefined) => {
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-          <template v-for="doc in sortedOrders" :key="doc.userId">
-            <tr v-for="order in doc.orders" :key="order.orderId">
-              <td class="px-3 py-4 text-sm text-gray-500 max-w-[100px]">
-                <div class="line-clamp-2 break-words">{{ order.orderId }}</div>
-              </td>
-              <td class="px-3 py-4 w-[150px] group">
-                <div class="flex items-center">
-                  <img 
-                    :src="order.imageUrl" 
-                    :alt="order.productName" 
-                    class="h-10 w-10 flex-shrink-0 rounded-full"
-                  >
-                  <div class="ml-4 min-w-0">
-                    <div class="text-sm font-medium">
-                      <a
-                        :href="generateTaobaoUrl(order.itemId, order.skuId)"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-indigo-600 hover:text-indigo-900 overflow-hidden hover:overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 block"
-                        :title="order.productName"
-                      >
-                        {{ order.productName }}
-                      </a>
-                    </div>
-                    <div class="text-sm text-gray-500 truncate">{{ order.seller }}</div>
+          <tr v-for="(order, index) in sortedOrders" :key="order.orderId">
+            <td class="px-3 py-4 text-sm text-gray-500">
+              {{ index + 1 }}
+            </td>
+            <td class="px-3 py-4 text-sm text-gray-500 max-w-[100px]">
+              <div class="line-clamp-2 break-words">{{ order.orderId }}</div>
+            </td>
+            <td class="px-3 py-4 w-[150px] group">
+              <div class="flex items-center">
+                <img 
+                  :src="order.imageUrl" 
+                  :alt="order.productName" 
+                  class="h-10 w-10 flex-shrink-0 rounded-full"
+                >
+                <div class="ml-4 min-w-0">
+                  <div class="text-sm font-medium">
+                    <a
+                      :href="generateTaobaoUrl(order.itemId, order.skuId)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-indigo-600 hover:text-indigo-900 overflow-hidden hover:overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 block"
+                      :title="order.productName"
+                    >
+                      {{ order.productName }}
+                    </a>
                   </div>
+                  <div class="text-sm text-gray-500 truncate">{{ order.seller }}</div>
                 </div>
-              </td>
-              <td class="px-3 py-4 text-sm text-gray-500 max-w-[80px]">
-                <div class="line-clamp-2 break-words">{{ order.skuId || '-' }}</div>
-              </td>
-              <td class="px-3 py-4 text-sm text-gray-500 max-w-[150px]">
-                <div v-if="order.specs && order.specs.length > 0" class="space-y-1">
-                  <div v-for="(spec, index) in order.specs" :key="index" class="text-xs break-words">
-                    <span class="font-medium">{{ spec.name }}:</span> {{ spec.value }}
-                  </div>
+              </div>
+            </td>
+            <td class="px-3 py-4 text-sm text-gray-500 max-w-[80px]">
+              <div class="line-clamp-2 break-words">{{ order.skuId || '-' }}</div>
+            </td>
+            <td class="px-3 py-4 text-sm text-gray-500 max-w-[150px]">
+              <div v-if="order.specs && order.specs.length > 0" class="space-y-1">
+                <div v-for="(spec, index) in order.specs" :key="index" class="text-xs break-words">
+                  <span class="font-medium">{{ spec.name }}:</span> {{ spec.value }}
                 </div>
-                <span v-else class="text-gray-400">-</span>
-              </td>
-              <td class="px-3 py-4 whitespace-nowrap text-sm">
-                <div class="flex items-center space-x-2">
-                  <input
-                    type="number"
-                    v-model="manualPrices[order.orderId]"
-                    placeholder="가격 입력"
-                    class="w-24 px-2 py-1 border rounded focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                  <button
-                    @click="handleManualPriceUpdate(order, doc.userId)"
-                    :disabled="updateStatus[order.orderId] === 'loading'"
-                    class="px-3 py-1 text-xs rounded-md"
-                    :class="{
-                      'bg-indigo-600 text-white hover:bg-indigo-700': updateStatus[order.orderId] !== 'loading',
-                      'bg-gray-400 cursor-not-allowed': updateStatus[order.orderId] === 'loading'
-                    }"
-                  >
-                    <span v-if="updateStatus[order.orderId] === 'loading'">저장중...</span>
-                    <span v-else-if="updateStatus[order.orderId] === 'success'">완료!</span>
-                    <span v-else-if="updateStatus[order.orderId] === 'error'">오류</span>
-                    <span v-else>저장</span>
-                  </button>
-                </div>
-                <div v-if="order.manualPrice" class="mt-1 text-sm text-gray-600">
-                  현재: ¥{{ order.manualPrice.toLocaleString() }}
-                </div>
-              </td>
-              <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                ¥{{ order.totalOrderPrice.toLocaleString() }}
-              </td>
-              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                ¥{{ order.shippingFee.toLocaleString() }}
-              </td>
-              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                ¥{{ order.price.toLocaleString() }}
-              </td>
-              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ order.quantity.toLocaleString() }}개
-              </td>
-              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ formatDate(order.orderDate?.toDate()) }}
-              </td>
-              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ formatManualPriceDate(order.manualPriceUpdatedAt) }}
-              </td>
-            </tr>
-          </template>
+              </div>
+              <span v-else class="text-gray-400">-</span>
+            </td>
+            <td class="px-3 py-4 whitespace-nowrap text-sm">
+              <div class="flex items-center space-x-2">
+                <input
+                  type="number"
+                  v-model="manualPrices[order.orderId]"
+                  placeholder="가격 입력"
+                  class="w-24 px-2 py-1 border rounded focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <button
+                  @click="handleManualPriceUpdate(order, doc.userId)"
+                  :disabled="updateStatus[order.orderId] === 'loading'"
+                  class="px-3 py-1 text-xs rounded-md"
+                  :class="{
+                    'bg-indigo-600 text-white hover:bg-indigo-700': updateStatus[order.orderId] !== 'loading',
+                    'bg-gray-400 cursor-not-allowed': updateStatus[order.orderId] === 'loading'
+                  }"
+                >
+                  <span v-if="updateStatus[order.orderId] === 'loading'">저장중...</span>
+                  <span v-else-if="updateStatus[order.orderId] === 'success'">완료!</span>
+                  <span v-else-if="updateStatus[order.orderId] === 'error'">오류</span>
+                  <span v-else>저장</span>
+                </button>
+              </div>
+              <div v-if="order.manualPrice" class="mt-1 text-sm text-gray-600">
+                현재: ¥{{ order.manualPrice.toLocaleString() }}
+              </div>
+            </td>
+            <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              ¥{{ order.totalOrderPrice.toLocaleString() }}
+            </td>
+            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+              ¥{{ order.shippingFee.toLocaleString() }}
+            </td>
+            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+              ¥{{ order.price.toLocaleString() }}
+            </td>
+            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+              {{ order.quantity.toLocaleString() }}개
+            </td>
+            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+              {{ formatDate(order.orderDate?.toDate()) }}
+            </td>
+            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+              {{ formatManualPriceDate(order.manualPriceUpdatedAt) }}
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
