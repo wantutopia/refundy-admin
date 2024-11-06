@@ -10,8 +10,10 @@
     "deploy": "vue-tsc -b && vite build && firebase deploy"
   },
   "dependencies": {
+    "chart.js": "^4.4.6",
     "firebase": "^11.0.1",
-    "vue": "^3.5.12"
+    "vue": "^3.5.12",
+    "vue-chartjs": "^5.3.2"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

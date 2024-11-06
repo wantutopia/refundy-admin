@@ -1,9 +1,31 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { Bar, Pie } from 'vue-chartjs';
+import { 
+  Chart as ChartJS, 
+  CategoryScale, 
+  LinearScale, 
+  BarElement, 
+  Title, 
+  Tooltip, 
+  Legend,
+  ArcElement
+} from 'chart.js';
 import { useTaobaoOrders } from '@/firebase/firestore';
 
 const selectedUserId = ref<string | null>(null);
 const { orders, loading, error, allUserIds, subscribeToOrders, subscribeToUserIds, cleanup } = useTaobaoOrders(selectedUserId);
+
+// Chart.js 컴포넌트 등록
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+);
 
 // 환불 가능 여부 체크 함수 수정
 const isRefundable = (order: any) => {
@@ -154,6 +176,75 @@ const userStatistics = computed(() => {
   });
 });
 
+// 차트 데이터 계산
+const chartData = computed(() => {
+  const labels = userStatistics.value.map(stat => stat.userDisplayName || stat.userId.slice(0, 8));
+  
+  return {
+    // 주문 금액과 환불 금액 비교 차트
+    orderAmountChart: {
+      labels,
+      datasets: [
+        {
+          label: '총 주문 금액',
+          backgroundColor: '#4F46E5',
+          data: userStatistics.value.map(stat => stat.totalOrderAmount)
+        },
+        {
+          label: '환불 가능 금액',
+          backgroundColor: '#EF4444',
+          data: userStatistics.value.map(stat => stat.totalRefundAmount)
+        }
+      ]
+    },
+    // 환불 가능 비율 파이 차트
+    refundRatioChart: {
+      labels: ['환불 가능 주문', '일반 주문'],
+      datasets: [{
+        backgroundColor: ['#EF4444', '#4F46E5'],
+        data: [
+          statistics.value.refundableOrders,
+          statistics.value.totalOrders - statistics.value.refundableOrders
+        ]
+      }]
+    },
+    // 사용자별 환불 비율 차트
+    userRefundRatioChart: {
+      labels,
+      datasets: [{
+        label: '환불 가능 비율 (%)',
+        backgroundColor: '#10B981',
+        data: userStatistics.value.map(stat => parseFloat(stat.refundableRatio.toFixed(1)))
+      }]
+    }
+  };
+});
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'top' as const,
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true
+    }
+  }
+};
+
+const pieOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'top' as const,
+    }
+  }
+};
+
 onMounted(() => {
   subscribeToOrders();
   subscribeToUserIds();
@@ -166,6 +257,7 @@ onUnmounted(() => {
 
 <template>
   <div class="p-4">
+    <!-- 통계 카드들 -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
       <!-- 총 주문 수 -->
       <div class="bg-white p-6 rounded-lg shadow">
@@ -208,18 +300,8 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 로딩 상태 -->
-    <div v-if="loading" class="text-center py-4">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto"></div>
-    </div>
-
-    <!-- 에러 메시지 -->
-    <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-      {{ error }}
-    </div>
-
-    <!-- 테이블 부분 수정 -->
-    <div class="overflow-x-auto">
+    <!-- 테이블 -->
+    <div class="overflow-x-auto mb-8">
       <div class="inline-block min-w-full align-middle">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
@@ -262,6 +344,52 @@ onUnmounted(() => {
           </tbody>
         </table>
       </div>
+    </div>
+
+    <!-- 차트 섹션 수정 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- 주문 금액과 환불 금액 비교 차트 -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h3 class="text-gray-500 text-sm font-medium mb-2">사용자별 주문/환불 금액금액(≥¥10)</h3>
+        <div class="h-[300px]">
+          <Bar
+            :data="chartData.orderAmountChart"
+            :options="chartOptions"
+          />
+        </div>
+      </div>
+
+      <!-- 전체 환불 가능 비율 파이 차트 -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h3 class="text-gray-500 text-sm font-medium mb-2">전체 환불 가능 비율금액(≥¥10)</h3>
+        <div class="h-[300px]">
+          <Pie
+            :data="chartData.refundRatioChart"
+            :options="pieOptions"
+          />
+        </div>
+      </div>
+
+      <!-- 사용자별 환불 비율 차트 -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h3 class="text-gray-500 text-sm font-medium mb-2">사용자별 환불 비율금액(≥¥10)</h3>
+        <div class="h-[300px]">
+          <Bar
+            :data="chartData.userRefundRatioChart"
+            :options="chartOptions"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- 로딩 상태 -->
+    <div v-if="loading" class="text-center py-4">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto"></div>
+    </div>
+
+    <!-- 에러 메시지 -->
+    <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      {{ error }}
     </div>
   </div>
 </template> 
