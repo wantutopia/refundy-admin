@@ -1,4 +1,4 @@
-import { getFirestore, collection, onSnapshot, query, where, doc, updateDoc, Timestamp, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, query, where, doc, updateDoc, Timestamp, getDoc, getDocs } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { ref, type Ref } from 'vue';
 
@@ -43,6 +43,7 @@ export interface TaobaoOrder {
 export interface TaobaoOrdersDoc {
   orders: TaobaoOrder[];
   userId: string;
+  userDisplayName?: string;
 }
 
 export const useTaobaoOrders = (selectedUserId: Ref<string | null>) => {
@@ -53,6 +54,16 @@ export const useTaobaoOrders = (selectedUserId: Ref<string | null>) => {
 
   const unsubscribe = ref<(() => void) | null>(null);
   const userIdsUnsubscribe = ref<(() => void) | null>(null);
+
+  const fetchUserDisplayName = async (uid: string): Promise<string> => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      return userDoc.exists() ? userDoc.data().displayName || '' : '';
+    } catch (err) {
+      console.error(`Error fetching user displayName for ${uid}:`, err);
+      return '';
+    }
+  };
 
   const subscribeToUserIds = () => {
     const ordersRef = collection(db, 'taobaoOrders');
@@ -75,11 +86,16 @@ export const useTaobaoOrders = (selectedUserId: Ref<string | null>) => {
 
       unsubscribe.value = onSnapshot(
         ordersQuery,
-        (snapshot) => {
-          orders.value = snapshot.docs.map((doc) => ({
-            userId: doc.id,
-            orders: doc.data().orders,
-          }));
+        async (snapshot) => {
+          const ordersWithDisplayNames = await Promise.all(
+            snapshot.docs.map(async (doc) => ({
+              userId: doc.id,
+              orders: doc.data().orders,
+              userDisplayName: await fetchUserDisplayName(doc.id),
+            }))
+          );
+          
+          orders.value = ordersWithDisplayNames;
           loading.value = false;
         },
         (err) => {

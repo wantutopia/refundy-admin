@@ -80,6 +80,7 @@ const userStatistics = computed(() => {
   return allUserIds.value.map(userId => {
     const userStats = {
       userId,
+      userDisplayName: '',
       totalOrders: 0,
       refundableOrders: 0,
       refundableRatio: 0,
@@ -92,6 +93,9 @@ const userStatistics = computed(() => {
     // 해당 유저의 주문 문서 찾기
     const userDoc = orders.value.find(doc => doc.userId === userId);
     
+    // userDisplayName 설정
+    userStats.userDisplayName = userDoc?.userDisplayName || '';
+
     // 해당 유저의 orders 배열 순회
     userDoc?.orders?.forEach(order => {
       userStats.totalOrders++;
@@ -191,6 +195,7 @@ onUnmounted(() => {
           <thead class="bg-gray-50">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">유저 ID</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이름</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문 금액</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 주문</th>
@@ -203,6 +208,7 @@ onUnmounted(() => {
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="stat in userStatistics" :key="stat.userId">
               <td class="px-6 py-4 whitespace-nowrap">{{ stat.userId }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ stat.userDisplayName || '-' }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ stat.totalOrders.toLocaleString() }}건</td>
               <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.totalOrderAmount.toLocaleString() }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundableOrders.toLocaleString() }}건</td>
