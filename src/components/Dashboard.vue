@@ -43,9 +43,9 @@ const statistics = computed(() => {
 
   let totalOrderAmount = 0;
 
-  // orders.value가 배열인 경우 직접 순회
-  if (Array.isArray(orders.value)) {
-    orders.value.forEach(order => {
+  // orders.value의 각 문서에서 orders 배열을 순회
+  orders.value.forEach(doc => {
+    doc.orders?.forEach(order => {
       stats.totalOrders++;
       stats.totalAmount += order.totalOrderPrice || 0;
       totalOrderAmount += order.totalOrderPrice || 0;
@@ -55,7 +55,7 @@ const statistics = computed(() => {
         stats.totalRefundAmount += calculateRefundAmount(order);
       }
     });
-  }
+  });
 
   // 비율 계산
   stats.refundableRatio = stats.totalOrders > 0 
@@ -89,12 +89,11 @@ const userStatistics = computed(() => {
       averageRefundAmount: 0,
     };
 
-    // 해당 유저의 주문만 필터링
-    const userOrders = Array.isArray(orders.value) 
-      ? orders.value.filter(order => order.userId === userId)
-      : [];
-
-    userOrders.forEach(order => {
+    // 해당 유저의 주문 문서 찾기
+    const userDoc = orders.value.find(doc => doc.userId === userId);
+    
+    // 해당 유저의 orders 배열 순회
+    userDoc?.orders?.forEach(order => {
       userStats.totalOrders++;
       userStats.totalOrderAmount += order.totalOrderPrice || 0;
 
@@ -133,7 +132,7 @@ onUnmounted(() => {
 
 <template>
   <div class="p-4">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
       <!-- 총 주문 수 -->
       <div class="bg-white p-6 rounded-lg shadow">
         <h3 class="text-gray-500 text-sm font-medium">총 주문 수</h3>
@@ -150,11 +149,19 @@ onUnmounted(() => {
         </p>
       </div>
 
-      <!-- 평균 주문 금액 -->
+      <!-- 총 환불 가능 금액 -->
       <div class="bg-white p-6 rounded-lg shadow">
-        <h3 class="text-gray-500 text-sm font-medium">평균 주문 금액</h3>
+        <h3 class="text-gray-500 text-sm font-medium">총 환불 가능 금액</h3>
         <p class="mt-2 text-3xl font-bold text-gray-900">
-          ¥{{ statistics.averageOrderAmount.toLocaleString() }}
+          ¥{{ statistics.totalRefundAmount.toLocaleString() }}
+        </p>
+      </div>
+
+      <!-- 환불액 비율 -->
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h3 class="text-gray-500 text-sm font-medium">환불액 비율</h3>
+        <p class="mt-2 text-3xl font-bold text-gray-900">
+          {{ statistics.refundAmountRatio.toFixed(1) }}%
         </p>
       </div>
 
@@ -183,6 +190,7 @@ onUnmounted(() => {
         <tr>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">유저 ID</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문 금액</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 주문</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 비율</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 환불 가능 금액</th>
@@ -194,6 +202,7 @@ onUnmounted(() => {
         <tr v-for="stat in userStatistics" :key="stat.userId">
           <td class="px-6 py-4 whitespace-nowrap">{{ stat.userId }}</td>
           <td class="px-6 py-4 whitespace-nowrap">{{ stat.totalOrders.toLocaleString() }}건</td>
+          <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.totalOrderAmount.toLocaleString() }}</td>
           <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundableOrders.toLocaleString() }}건</td>
           <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundableRatio.toFixed(1) }}%</td>
           <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.totalRefundAmount.toLocaleString() }}</td>
