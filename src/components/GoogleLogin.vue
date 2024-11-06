@@ -50,13 +50,12 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <div v-else class="flex flex-col items-center gap-2">
+    <div v-else class="flex flex-row items-center gap-3">
       <img 
         :src="currentUser.photoURL ?? ''" 
         :alt="currentUser.displayName ?? '사용자'"
-        class="w-10 h-10 rounded-full"
+        class="w-8 h-8 rounded-full"
       />
-      <p class="text-gray-700">{{ currentUser.displayName ?? '사용자' }}</p>
       <button
         @click="handleSignOut"
         class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
