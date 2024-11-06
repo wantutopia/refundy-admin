@@ -113,26 +113,30 @@ const formatManualPriceDate = (timestamp: Timestamp | undefined) => {
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[50px]">순번</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[100px] break-words">주문 ID</th>
-            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[150px]">상품명</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[100px]">상품명</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[80px] break-words">SKU ID</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[150px]">옵션</th>
+            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수량</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수동 가격</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">총 결제금액</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">배송비</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">단가</th>
-            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수량</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문일</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수동 가격 입력일</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <template v-for="doc in sortedOrders" :key="doc.userId">
-            <tr v-for="order in doc.orders" :key="order.orderId">
+            <tr v-for="(order, index) in doc.orders" :key="order.orderId">
+              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ index + 1 }}
+              </td>
               <td class="px-3 py-4 text-sm text-gray-500 max-w-[100px]">
                 <div class="line-clamp-2 break-words">{{ order.orderId }}</div>
               </td>
-              <td class="px-3 py-4 w-[150px] group">
+              <td class="px-3 py-4 w-[100px] group">
                 <div class="flex items-center">
                   <img 
                     :src="order.imageUrl" 
@@ -165,6 +169,9 @@ const formatManualPriceDate = (timestamp: Timestamp | undefined) => {
                   </div>
                 </div>
                 <span v-else class="text-gray-400">-</span>
+              </td>
+              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ order.quantity.toLocaleString() }}개
               </td>
               <td class="px-3 py-4 whitespace-nowrap text-sm">
                 <div class="flex items-center space-x-2">
@@ -201,9 +208,6 @@ const formatManualPriceDate = (timestamp: Timestamp | undefined) => {
               </td>
               <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                 ¥{{ order.price.toLocaleString() }}
-              </td>
-              <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ order.quantity.toLocaleString() }}개
               </td>
               <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ formatDate(order.orderDate?.toDate()) }}
