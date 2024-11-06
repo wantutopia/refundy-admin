@@ -185,7 +185,7 @@ onUnmounted(() => {
 
       <!-- 총 환불 가능 금액 -->
       <div class="bg-white p-6 rounded-lg shadow">
-        <h3 class="text-gray-500 text-sm font-medium">총 환불 가능 금액</h3>
+        <h3 class="text-gray-500 text-sm font-medium">총 환불 가능 금액(≥¥10)</h3>
         <p class="mt-2 text-2xl font-bold text-gray-900 min-w-[180px]">
           ¥{{ Math.floor(statistics.totalRefundAmount).toLocaleString() }}
         </p>
@@ -193,7 +193,7 @@ onUnmounted(() => {
 
       <!-- 환불액 비율 -->
       <div class="bg-white p-6 rounded-lg shadow">
-        <h3 class="text-gray-500 text-sm font-medium">환불액 비율</h3>
+        <h3 class="text-gray-500 text-sm font-medium">환불액 비율(≥¥10)</h3>
         <p class="mt-2 text-3xl font-bold text-gray-900">
           {{ statistics.refundAmountRatio.toFixed(1) }}%
         </p>
