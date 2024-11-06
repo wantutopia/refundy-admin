@@ -12,6 +12,13 @@ const isRefundable = (order: any) => {
   return refundAmount >= 10;
 };
 
+// 1위안 이상 환불 가능 여부 체크 함수 추가
+const isRefundableIncludeSmall = (order: any) => {
+  if (!order.manualPrice) return false;
+  const refundAmount = order.totalOrderPrice - order.manualPrice;
+  return refundAmount > 0;
+};
+
 // 환불 금액 계산 함수 추가
 const calculateRefundAmount = (order: any) => {
   return order.manualPrice ? order.totalOrderPrice - order.manualPrice : 0;
@@ -88,6 +95,11 @@ const userStatistics = computed(() => {
       totalRefundAmount: 0,
       refundAmountRatio: 0,
       averageRefundAmount: 0,
+      refundableOrdersAll: 0,
+      refundableRatioAll: 0,
+      totalRefundAmountAll: 0,
+      refundAmountRatioAll: 0,
+      averageRefundAmountAll: 0,
     };
 
     // 해당 유저의 주문 문서 찾기
@@ -106,6 +118,12 @@ const userStatistics = computed(() => {
         const refundAmount = calculateRefundAmount(order);
         userStats.totalRefundAmount += refundAmount;
       }
+
+      if (isRefundableIncludeSmall(order)) {
+        userStats.refundableOrdersAll++;
+        const refundAmount = calculateRefundAmount(order);
+        userStats.totalRefundAmountAll += refundAmount;
+      }
     });
 
     userStats.refundableRatio = userStats.totalOrders > 0 
@@ -118,6 +136,18 @@ const userStatistics = computed(() => {
 
     userStats.averageRefundAmount = userStats.refundableOrders > 0
       ? userStats.totalRefundAmount / userStats.refundableOrders
+      : 0;
+
+    userStats.refundableRatioAll = userStats.totalOrders > 0 
+      ? (userStats.refundableOrdersAll / userStats.totalOrders) * 100 
+      : 0;
+    
+    userStats.refundAmountRatioAll = userStats.totalOrderAmount > 0 
+      ? (userStats.totalRefundAmountAll / userStats.totalOrderAmount) * 100 
+      : 0;
+
+    userStats.averageRefundAmountAll = userStats.refundableOrdersAll > 0
+      ? userStats.totalRefundAmountAll / userStats.refundableOrdersAll
       : 0;
 
     return userStats;
@@ -198,11 +228,16 @@ onUnmounted(() => {
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이름</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문 금액</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 주문</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 비율</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 환불 가능 금액</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불액 비율</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">평균 환불액</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 주문(≥¥10)</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 비율(≥¥10)</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 환불 가능 금액(≥¥10)</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불액 비율(≥¥10)</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">평균 환불액(≥¥10)</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 주문(전체)</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 비율(전체)</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 환불 가능 금액(전체)</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불액 비율(전체)</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">평균 환불액(전체)</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -218,6 +253,11 @@ onUnmounted(() => {
               <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.totalRefundAmount.toLocaleString() }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundAmountRatio.toFixed(1) }}%</td>
               <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.averageRefundAmount.toFixed(2) }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundableOrdersAll.toLocaleString() }}건</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundableRatioAll.toFixed(1) }}%</td>
+              <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.totalRefundAmountAll.toLocaleString() }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundAmountRatioAll.toFixed(1) }}%</td>
+              <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.averageRefundAmountAll.toFixed(2) }}</td>
             </tr>
           </tbody>
         </table>
