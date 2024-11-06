@@ -5,6 +5,8 @@ import { formatDate } from '@/utils/dateFormatter';
 import { Timestamp } from 'firebase/firestore';
 
 const selectedUserId = ref<string | null>(null);
+const userList = ref<Array<{ userId: string; userDisplayName: string }>>([]);
+
 const { 
   orders, 
   loading, 
@@ -14,10 +16,32 @@ const {
   cleanup 
 } = useTaobaoOrders(selectedUserId);
 
-watch(selectedUserId, () => {
-  cleanup();
-  subscribeToOrders();
+// 필터링된 주문 목록을 계산하는 computed 속성 추가
+const filteredOrders = computed(() => {
+  if (!selectedUserId.value) {
+    return orders.value;
+  }
+  return orders.value.filter(doc => doc.userId === selectedUserId.value);
 });
+
+// userList를 업데이트하는 함수 추가
+const updateUserList = (orders: any[]) => {
+  const uniqueUsers = new Map();
+  orders.forEach(doc => {
+    if (!uniqueUsers.has(doc.userId)) {
+      uniqueUsers.set(doc.userId, {
+        userId: doc.userId,
+        userDisplayName: doc.userDisplayName || '이름 없음'
+      });
+    }
+  });
+  userList.value = Array.from(uniqueUsers.values());
+};
+
+// orders가 변경될 때마다 userList 업데이트
+watch(() => orders.value, (newOrders) => {
+  updateUserList(newOrders);
+}, { immediate: true });
 
 onMounted(() => {
   subscribeToOrders();
@@ -33,13 +57,14 @@ const generateTaobaoUrl = (itemId: string, skuId?: string) => {
   return skuId ? `${baseUrl}&skuId=${skuId}` : baseUrl;
 };
 
+// sortedOrders computed 속성을 수정 (orders.value 대신 filteredOrders.value 사용)
 const sortedOrders = computed(() => {
-  return orders.value.map(doc => ({
+  return filteredOrders.value.map(doc => ({
     ...doc,
     orders: [...doc.orders].sort((a, b) => {
       const dateA = a.orderDate?.toDate().getTime() || 0;
       const dateB = b.orderDate?.toDate().getTime() || 0;
-      return dateB - dateA; // 내림차순 정렬
+      return dateB - dateA;
     })
   }));
 });
@@ -92,11 +117,11 @@ const formatManualPriceDate = (timestamp: Timestamp | undefined) => {
       >
         <option :value="null">전체 보기</option>
         <option 
-          v-for="doc in orders" 
-          :key="doc.userId" 
-          :value="doc.userId"
+          v-for="user in userList" 
+          :key="user.userId" 
+          :value="user.userId"
         >
-          {{ doc.userId }} - {{ doc.userDisplayName || '이름 없음' }}
+          {{ user.userId }} - {{ user.userDisplayName }}
         </option>
       </select>
     </div>
