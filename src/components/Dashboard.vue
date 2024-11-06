@@ -144,16 +144,16 @@ onUnmounted(() => {
       <!-- 총 주문 금액 -->
       <div class="bg-white p-6 rounded-lg shadow">
         <h3 class="text-gray-500 text-sm font-medium">총 주문 금액</h3>
-        <p class="mt-2 text-3xl font-bold text-gray-900">
-          ¥{{ statistics.totalAmount.toLocaleString() }}
+        <p class="mt-2 text-2xl font-bold text-gray-900 min-w-[180px]">
+          ¥{{ Math.floor(statistics.totalAmount).toLocaleString() }}
         </p>
       </div>
 
       <!-- 총 환불 가능 금액 -->
       <div class="bg-white p-6 rounded-lg shadow">
         <h3 class="text-gray-500 text-sm font-medium">총 환불 가능 금액</h3>
-        <p class="mt-2 text-3xl font-bold text-gray-900">
-          ¥{{ statistics.totalRefundAmount.toLocaleString() }}
+        <p class="mt-2 text-2xl font-bold text-gray-900 min-w-[180px]">
+          ¥{{ Math.floor(statistics.totalRefundAmount).toLocaleString() }}
         </p>
       </div>
 
@@ -184,32 +184,36 @@ onUnmounted(() => {
       {{ error }}
     </div>
 
-    <!-- 테이블 헤더에 평균 환불액 컬럼 추가 -->
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">유저 ID</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문 금액</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 주문</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 비율</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 환불 가능 금액</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불액 비율</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">평균 환불액</th>
-        </tr>
-      </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
-        <tr v-for="stat in userStatistics" :key="stat.userId">
-          <td class="px-6 py-4 whitespace-nowrap">{{ stat.userId }}</td>
-          <td class="px-6 py-4 whitespace-nowrap">{{ stat.totalOrders.toLocaleString() }}건</td>
-          <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.totalOrderAmount.toLocaleString() }}</td>
-          <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundableOrders.toLocaleString() }}건</td>
-          <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundableRatio.toFixed(1) }}%</td>
-          <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.totalRefundAmount.toLocaleString() }}</td>
-          <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundAmountRatio.toFixed(1) }}%</td>
-          <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.averageRefundAmount.toFixed(2) }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- 테이블 부분 수정 -->
+    <div class="overflow-x-auto">
+      <div class="inline-block min-w-full align-middle">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">유저 ID</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문 금액</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 주문</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 비율</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 환불 가능 금액</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불액 비율</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">평균 환불액</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-for="stat in userStatistics" :key="stat.userId">
+              <td class="px-6 py-4 whitespace-nowrap">{{ stat.userId }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ stat.totalOrders.toLocaleString() }}건</td>
+              <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.totalOrderAmount.toLocaleString() }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundableOrders.toLocaleString() }}건</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundableRatio.toFixed(1) }}%</td>
+              <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.totalRefundAmount.toLocaleString() }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">{{ stat.refundAmountRatio.toFixed(1) }}%</td>
+              <td class="px-6 py-4 whitespace-nowrap">¥{{ stat.averageRefundAmount.toFixed(2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </template> 
