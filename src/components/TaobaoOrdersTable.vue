@@ -16,7 +16,7 @@ const {
   cleanup 
 } = useTaobaoOrders(selectedUserId);
 
-// 필터링된 주문 목록을 계산하는 computed 속성 추가
+// 필터링된 주문 목록을 계산하는 computed 속성
 const filteredOrders = computed(() => {
   if (!selectedUserId.value) {
     return orders.value;
@@ -57,17 +57,48 @@ const generateTaobaoUrl = (itemId: string, skuId?: string) => {
   return skuId ? `${baseUrl}&skuId=${skuId}` : baseUrl;
 };
 
-// sortedOrders computed 속성을 수정 (orders.value 대신 filteredOrders.value 사용)
-const sortedOrders = computed(() => {
-  return filteredOrders.value.map(doc => ({
-    ...doc,
-    orders: [...doc.orders].sort((a, b) => {
-      const dateA = a.orderDate?.toDate().getTime() || 0;
-      const dateB = b.orderDate?.toDate().getTime() || 0;
-      return dateB - dateA;
-    })
-  }));
+// 정렬 상태를 관리하기 위한 ref 추가
+const sortConfig = ref({
+  key: 'orderDate' as const,
+  direction: 'desc' as 'asc' | 'desc'
 });
+
+// sortedOrders computed 속성 수정
+const sortedOrders = computed(() => {
+  // 깊은 복사를 통해 원본 데이터 보존
+  return filteredOrders.value.map(doc => {
+    const sortedOrdersList = [...doc.orders].sort((a, b) => {
+      if (sortConfig.value.key === 'orderDate') {
+        const dateA = a.orderDate?.toDate().getTime() || 0;
+        const dateB = b.orderDate?.toDate().getTime() || 0;
+        return sortConfig.value.direction === 'desc' ? dateB - dateA : dateA - dateB;
+      }
+      if (sortConfig.value.key === 'totalOrderPrice') {
+        return sortConfig.value.direction === 'desc' 
+          ? b.totalOrderPrice - a.totalOrderPrice 
+          : a.totalOrderPrice - b.totalOrderPrice;
+      }
+      return 0;
+    });
+
+    return {
+      ...doc,
+      orders: sortedOrdersList
+    };
+  });
+});
+
+// 정렬 처리 함수 추가
+const handleSort = (key: 'orderDate' | 'totalOrderPrice') => {
+  if (sortConfig.value.key === key) {
+    // 같은 컬럼을 클릭한 경우 방향만 전환
+    sortConfig.value.direction = sortConfig.value.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    // 다른 컬럼을 클릭한 경우 해당 컬럼으로 내림차순 정렬
+    sortConfig.value.key = key;
+    sortConfig.value.direction = 'desc';
+  }
+};
 
 // 수동 가격 입력을 위한 상태 관리
 const manualPrices = ref<{ [key: string]: string }>({});
@@ -148,16 +179,32 @@ const formatManualPriceDate = (timestamp: Timestamp | undefined) => {
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[150px]">옵션</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수량</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수동 가격</th>
-            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">총 결제금액</th>
+            <th 
+              @click="handleSort('totalOrderPrice')"
+              class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+            >
+              총 결제금액
+              <span v-if="sortConfig.key === 'totalOrderPrice'" class="ml-1">
+                {{ sortConfig.direction === 'asc' ? '↑' : '↓' }}
+              </span>
+            </th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">배송비</th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">단가</th>
-            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">주문일</th>
+            <th 
+              @click="handleSort('orderDate')"
+              class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+            >
+              주문일
+              <span v-if="sortConfig.key === 'orderDate'" class="ml-1">
+                {{ sortConfig.direction === 'asc' ? '↑' : '↓' }}
+              </span>
+            </th>
             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">수동 가격 입력일</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <template v-for="doc in sortedOrders" :key="doc.userId">
-            <tr v-for="(order, index) in doc.orders" :key="order.orderId">
+            <tr v-for="(order, index) in doc.orders" :key="order.uniqueKey">
               <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ index + 1 }}
               </td>
