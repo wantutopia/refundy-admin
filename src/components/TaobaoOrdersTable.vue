@@ -59,7 +59,7 @@ const generateTaobaoUrl = (itemId: string, skuId?: string) => {
 
 // 정렬 상태를 관리하기 위한 ref 추가
 const sortConfig = ref({
-  key: 'orderDate' as const,
+  key: 'orderDate' as 'orderDate' | 'totalOrderPrice',
   direction: 'desc' as 'asc' | 'desc'
 });
 
@@ -204,7 +204,7 @@ const formatManualPriceDate = (timestamp: Timestamp | undefined) => {
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <template v-for="doc in sortedOrders" :key="doc.userId">
-            <tr v-for="(order, index) in doc.orders" :key="order.uniqueKey">
+            <tr v-for="(order, index) in doc.orders" :key="`${doc.userId}-${index}`">
               <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ index + 1 }}
               </td>

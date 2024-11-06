@@ -224,7 +224,7 @@ onUnmounted(() => {
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[50px]">유저 ID</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase max-w-[100px]">유저 ID</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이름</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 주문 금액</th>
@@ -242,8 +242,8 @@ onUnmounted(() => {
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="stat in userStatistics" :key="stat.userId">
-              <td class="px-6 py-4 whitespace-nowrap w-[50px]">
-                <div class="truncate" :title="stat.userId">{{ stat.userId }}</div>
+              <td class="px-6 py-4 whitespace-nowrap max-w-[100px]">
+                <div class="truncate max-w-[100px]" :title="stat.userId">{{ stat.userId }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">{{ stat.userDisplayName || '-' }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ stat.totalOrders.toLocaleString() }}건</td>
