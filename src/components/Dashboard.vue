@@ -41,7 +41,7 @@ const isRefundableIncludeSmall = (order: any) => {
   return refundAmount > 0;
 };
 
-// 환불 금액 계산 함수 추가
+// 환불 금액 계산 함 추가
 const calculateRefundAmount = (order: any) => {
   return order.manualPrice ? order.totalOrderPrice - order.manualPrice : 0;
 };
@@ -216,6 +216,40 @@ const chartData = computed(() => {
         backgroundColor: '#10B981',
         data: userStatistics.value.map(stat => parseFloat(stat.refundableRatio.toFixed(1)))
       }]
+    },
+
+    // 기간별 환불 가능성 차트
+    refundByPeriodChart: {
+      labels: refundByPeriodAnalysis.value.map(item => item.period),
+      datasets: [{
+        label: '환불 가능성 (%)',
+        backgroundColor: '#8B5CF6',
+        data: refundByPeriodAnalysis.value.map(item => parseFloat(item.ratio.toFixed(1)))
+      }]
+    },
+
+    // 구매금액별 환불 가능성 차트
+    refundByPriceRatioChart: {
+      labels: Object.keys(refundByPriceAnalysis.value),
+      datasets: [{
+        label: '환불 가능성 (%)',
+        backgroundColor: '#EC4899',
+        data: Object.entries(refundByPriceAnalysis.value).map(([_, stats]) => 
+          stats.total > 0 ? Math.floor((stats.refundable / stats.total) * 100) : 0
+        )
+      }]
+    },
+
+    // 구매금액별 평균 환불 금액 차트
+    refundByPriceAmountChart: {
+      labels: Object.keys(refundByPriceAnalysis.value),
+      datasets: [{
+        label: '평균 환불 금액 (¥)',
+        backgroundColor: '#F59E0B',
+        data: Object.entries(refundByPriceAnalysis.value).map(([_, stats]) => 
+          stats.refundable > 0 ? Math.floor(stats.refundAmount / stats.refundable) : 0
+        )
+      }]
     }
   };
 });
@@ -253,6 +287,72 @@ onMounted(() => {
 onUnmounted(() => {
   cleanup();
 });
+
+// 기간별 환불 가능성 분석
+const refundByPeriodAnalysis = computed(() => {
+  const periods = {
+    '1주': { total: 0, refundable: 0 },
+    '2주': { total: 0, refundable: 0 },
+    '3주': { total: 0, refundable: 0 },
+    '4주': { total: 0, refundable: 0 },
+    '4주+': { total: 0, refundable: 0 }
+  };
+
+  const now = new Date();
+  
+  orders.value?.forEach(doc => {
+    doc.orders?.forEach(order => {
+      const orderDate = new Date(order.orderDate);
+      const weeksDiff = Math.floor((now.getTime() - orderDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+      
+      let period;
+      if (weeksDiff <= 1) period = '1주';
+      else if (weeksDiff <= 2) period = '2주';
+      else if (weeksDiff <= 3) period = '3주';
+      else if (weeksDiff <= 4) period = '4주';
+      else period = '4주+';
+
+      periods[period].total++;
+      if (isRefundable(order)) {
+        periods[period].refundable++;
+      }
+    });
+  });
+
+  return Object.entries(periods).map(([period, stats]) => ({
+    period,
+    ratio: stats.total > 0 ? (stats.refundable / stats.total) * 100 : 0
+  }));
+});
+
+// 구매금액별 환불 분석
+const refundByPriceAnalysis = computed(() => {
+  const priceRanges = {
+    '~¥100': { total: 0, refundable: 0, refundAmount: 0 },
+    '¥100~500': { total: 0, refundable: 0, refundAmount: 0 },
+    '¥500~1000': { total: 0, refundable: 0, refundAmount: 0 },
+    '¥1000~': { total: 0, refundable: 0, refundAmount: 0 }
+  };
+
+  orders.value?.forEach(doc => {
+    doc.orders?.forEach(order => {
+      const price = order.totalOrderPrice;
+      let range;
+      if (price <= 100) range = '~¥100';
+      else if (price <= 500) range = '¥100~500';
+      else if (price <= 1000) range = '¥500~1000';
+      else range = '¥1000~';
+
+      priceRanges[range].total++;
+      if (isRefundable(order)) {
+        priceRanges[range].refundable++;
+        priceRanges[range].refundAmount += calculateRefundAmount(order);
+      }
+    });
+  });
+
+  return priceRanges;
+});
 </script>
 
 <template>
@@ -269,7 +369,7 @@ onUnmounted(() => {
 
       <!-- 총 주문 금액 -->
       <div class="bg-white p-6 rounded-lg shadow">
-        <h3 class="text-gray-500 text-sm font-medium">총 주문 금액</h3>
+        <h3 class="text-gray-500 text-sm font-medium">총 문 금액</h3>
         <p class="mt-2 text-2xl font-bold text-gray-900 min-w-[180px]">
           ¥{{ Math.floor(statistics.totalAmount).toLocaleString() }}
         </p>
@@ -350,7 +450,7 @@ onUnmounted(() => {
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <!-- 주문 금액과 환불 금액 비교 차트 -->
       <div class="bg-white p-4 rounded-lg shadow">
-        <h3 class="text-gray-500 text-sm font-medium mb-2">사용자별 주문/환불 금액금액(≥¥10)</h3>
+        <h3 class="text-gray-500 text-sm font-medium mb-2">��용자별 주문/환불 금액금액(≥¥10)</h3>
         <div class="h-[300px]">
           <Bar
             :data="chartData.orderAmountChart"
@@ -376,6 +476,42 @@ onUnmounted(() => {
         <div class="h-[300px]">
           <Bar
             :data="chartData.userRefundRatioChart"
+            :options="chartOptions"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- 새로운 차트 섹션 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-8">
+      <!-- 기간별 환불 가능성 차트 -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h3 class="text-gray-500 text-sm font-medium mb-2">기간별 환불 가능성</h3>
+        <div class="h-[300px]">
+          <Bar
+            :data="chartData.refundByPeriodChart"
+            :options="chartOptions"
+          />
+        </div>
+      </div>
+
+      <!-- 구매금액별 환불 가능성 차트 -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h3 class="text-gray-500 text-sm font-medium mb-2">구매금액별 환불 가능성</h3>
+        <div class="h-[300px]">
+          <Bar
+            :data="chartData.refundByPriceRatioChart"
+            :options="chartOptions"
+          />
+        </div>
+      </div>
+
+      <!-- 구매금액별 평균 환불 금액 차트 -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h3 class="text-gray-500 text-sm font-medium mb-2">구매금액별 평균 환불 금액</h3>
+        <div class="h-[300px]">
+          <Bar
+            :data="chartData.refundByPriceAmountChart"
             :options="chartOptions"
           />
         </div>
