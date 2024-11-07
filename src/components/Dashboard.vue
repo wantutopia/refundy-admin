@@ -252,6 +252,25 @@ const chartData = computed(() => {
         backgroundColor: '#8B5CF6',
         data: duplicateItemsAnalysis.value.map(([_, count]) => count)
       }]
+    },
+
+    // 주문 기간별 환불 가능성 차트
+    orderPeriodChart: {
+      labels: Object.keys(orderPeriodAnalysis.value),
+      datasets: [
+        {
+          label: '환불 가능 비율 (%)',
+          backgroundColor: '#14B8A6',
+          data: Object.entries(orderPeriodAnalysis.value).map(([_, stats]) => 
+            stats.total > 0 ? Math.floor((stats.refundable / stats.total) * 100) : 0
+          )
+        },
+        {
+          label: '주문 건수',
+          backgroundColor: '#6366F1',
+          data: Object.entries(orderPeriodAnalysis.value).map(([_, stats]) => stats.total)
+        }
+      ]
     }
   };
 });
@@ -352,6 +371,54 @@ const duplicateItemsAnalysis = computed(() => {
 
   return duplicates;
 });
+
+// 주문 기간별 통계 타입 정의
+type OrderPeriodStats = {
+  total: number;
+  refundable: number;
+  refundAmount: number;
+}
+
+type OrderPeriods = {
+  [key: string]: OrderPeriodStats;
+}
+
+// 주문 기간별 환불 분석
+const orderPeriodAnalysis = computed(() => {
+  const periodRanges: OrderPeriods = {
+    '1주 이내': { total: 0, refundable: 0, refundAmount: 0 },
+    '2주 이내': { total: 0, refundable: 0, refundAmount: 0 },
+    '3주 이내': { total: 0, refundable: 0, refundAmount: 0 },
+    '4주 이내': { total: 0, refundable: 0, refundAmount: 0 },
+    '4주 이상': { total: 0, refundable: 0, refundAmount: 0 }
+  };
+
+  const now = new Date();
+
+  orders.value?.forEach(doc => {
+    doc.orders?.forEach(order => {
+      if (!order.orderDate) return;
+
+      const orderDate = order.orderDate.toDate();
+      const diffDays = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      let range;
+      if (diffDays <= 7) range = '1주 이내';
+      else if (diffDays <= 14) range = '2주 이내';
+      else if (diffDays <= 21) range = '3주 이내';
+      else if (diffDays <= 28) range = '4주 이내';
+      else range = '4주 이상';
+
+      periodRanges[range].total++;
+      if (isRefundable(order)) {
+        periodRanges[range].refundable++;
+        periodRanges[range].refundAmount += calculateRefundAmount(order);
+      }
+    });
+  });
+
+  return periodRanges;
+});
 </script>
 
 <template>
@@ -412,7 +479,7 @@ const duplicateItemsAnalysis = computed(() => {
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 주문(≥¥10)</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 비율(≥¥10)</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">총 환불 가능 금액(≥¥10)</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불액 비율(≥¥10)</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불액 ���율(≥¥10)</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">평균 환불액(≥¥10)</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 주문(전체)</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">환불 가능 비율(전체)</th>
@@ -524,6 +591,40 @@ const duplicateItemsAnalysis = computed(() => {
                   beginAtZero: true,
                   ticks: {
                     stepSize: 1
+                  }
+                }
+              }
+            }"
+          />
+        </div>
+      </div>
+
+      <!-- 주문 기간별 환불 가능성 차트 -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h3 class="text-gray-500 text-sm font-medium mb-2">주문 기간별 환불 가능성(≥¥10)</h3>
+        <div class="h-[300px]">
+          <Bar
+            :data="chartData.orderPeriodChart"
+            :options="{
+              ...chartOptions,
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  position: 'left',
+                  title: {
+                    display: true,
+                    text: '환불 가능 비율 (%)'
+                  }
+                },
+                y1: {
+                  beginAtZero: true,
+                  position: 'right',
+                  title: {
+                    display: true,
+                    text: '주문 건수'
+                  },
+                  grid: {
+                    drawOnChartArea: false
                   }
                 }
               }
