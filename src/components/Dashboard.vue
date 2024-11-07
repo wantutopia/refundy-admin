@@ -218,16 +218,6 @@ const chartData = computed(() => {
       }]
     },
 
-    // 기간별 환불 가능성 차트
-    refundByPeriodChart: {
-      labels: refundByPeriodAnalysis.value.map(item => item.period),
-      datasets: [{
-        label: '환불 가능성 (%)',
-        backgroundColor: '#8B5CF6',
-        data: refundByPeriodAnalysis.value.map(item => parseFloat(item.ratio.toFixed(1)))
-      }]
-    },
-
     // 구매금액별 환불 가능성 차트
     refundByPriceRatioChart: {
       labels: Object.keys(refundByPriceAnalysis.value),
@@ -249,6 +239,18 @@ const chartData = computed(() => {
         data: Object.entries(refundByPriceAnalysis.value).map(([_, stats]) => 
           stats.refundable > 0 ? Math.floor(stats.refundAmount / stats.refundable) : 0
         )
+      }]
+    },
+
+    // 중복 아이템 차트 추가
+    duplicateItemsChart: {
+      labels: duplicateItemsAnalysis.value.map(([itemId]) => 
+        itemId.length > 10 ? `${itemId.slice(0, 10)}...` : itemId
+      ),
+      datasets: [{
+        label: '주문 횟수',
+        backgroundColor: '#8B5CF6',
+        data: duplicateItemsAnalysis.value.map(([_, count]) => count)
       }]
     }
   };
@@ -288,46 +290,20 @@ onUnmounted(() => {
   cleanup();
 });
 
-// 기간별 환불 가능성 분석
-const refundByPeriodAnalysis = computed(() => {
-  const periods = {
-    '1주': { total: 0, refundable: 0 },
-    '2주': { total: 0, refundable: 0 },
-    '3주': { total: 0, refundable: 0 },
-    '4주': { total: 0, refundable: 0 },
-    '4주+': { total: 0, refundable: 0 }
-  };
+// 가격 범위 타입 정의
+type PriceRangeStats = {
+  total: number;
+  refundable: number;
+  refundAmount: number;
+}
 
-  const now = new Date();
-  
-  orders.value?.forEach(doc => {
-    doc.orders?.forEach(order => {
-      const orderDate = new Date(order.orderDate);
-      const weeksDiff = Math.floor((now.getTime() - orderDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-      
-      let period;
-      if (weeksDiff <= 1) period = '1주';
-      else if (weeksDiff <= 2) period = '2주';
-      else if (weeksDiff <= 3) period = '3주';
-      else if (weeksDiff <= 4) period = '4주';
-      else period = '4주+';
-
-      periods[period].total++;
-      if (isRefundable(order)) {
-        periods[period].refundable++;
-      }
-    });
-  });
-
-  return Object.entries(periods).map(([period, stats]) => ({
-    period,
-    ratio: stats.total > 0 ? (stats.refundable / stats.total) * 100 : 0
-  }));
-});
+type PriceRanges = {
+  [key: string]: PriceRangeStats;
+}
 
 // 구매금액별 환불 분석
 const refundByPriceAnalysis = computed(() => {
-  const priceRanges = {
+  const priceRanges: PriceRanges = {
     '~¥100': { total: 0, refundable: 0, refundAmount: 0 },
     '¥100~500': { total: 0, refundable: 0, refundAmount: 0 },
     '¥500~1000': { total: 0, refundable: 0, refundAmount: 0 },
@@ -352,6 +328,29 @@ const refundByPriceAnalysis = computed(() => {
   });
 
   return priceRanges;
+});
+
+// itemId 중복 카운트 계산
+const duplicateItemsAnalysis = computed(() => {
+  const itemCounts: { [key: string]: number } = {};
+
+  // 모든 주문에서 itemId 카운트
+  orders.value?.forEach(doc => {
+    doc.orders?.forEach(order => {
+      const itemId = order.itemId;
+      if (itemId) {
+        itemCounts[itemId] = (itemCounts[itemId] || 0) + 1;
+      }
+    });
+  });
+
+  // 중복된 항목만 필터링 (카운트가 1보다 큰 항목)
+  const duplicates = Object.entries(itemCounts)
+    .filter(([_, count]) => count > 1)
+    .sort((a, b) => b[1] - a[1]) // 카운트 기준 내림차순 정렬
+    .slice(0, 20); // 상위 20개만 표시
+
+  return duplicates;
 });
 </script>
 
@@ -450,7 +449,7 @@ const refundByPriceAnalysis = computed(() => {
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <!-- 주문 금액과 환불 금액 비교 차트 -->
       <div class="bg-white p-4 rounded-lg shadow">
-        <h3 class="text-gray-500 text-sm font-medium mb-2">��용자별 주문/환불 금액금액(≥¥10)</h3>
+        <h3 class="text-gray-500 text-sm font-medium mb-2">용자별 주문/환불 금액금액(≥¥10)</h3>
         <div class="h-[300px]">
           <Bar
             :data="chartData.orderAmountChart"
@@ -484,20 +483,9 @@ const refundByPriceAnalysis = computed(() => {
 
     <!-- 새로운 차트 섹션 -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-8">
-      <!-- 기간별 환불 가능성 차트 -->
-      <div class="bg-white p-4 rounded-lg shadow">
-        <h3 class="text-gray-500 text-sm font-medium mb-2">기간별 환불 가능성</h3>
-        <div class="h-[300px]">
-          <Bar
-            :data="chartData.refundByPeriodChart"
-            :options="chartOptions"
-          />
-        </div>
-      </div>
-
       <!-- 구매금액별 환불 가능성 차트 -->
       <div class="bg-white p-4 rounded-lg shadow">
-        <h3 class="text-gray-500 text-sm font-medium mb-2">구매금액별 환불 가능성</h3>
+        <h3 class="text-gray-500 text-sm font-medium mb-2">구매금액별 환불 가능성(≥¥10)</h3>
         <div class="h-[300px]">
           <Bar
             :data="chartData.refundByPriceRatioChart"
@@ -508,11 +496,38 @@ const refundByPriceAnalysis = computed(() => {
 
       <!-- 구매금액별 평균 환불 금액 차트 -->
       <div class="bg-white p-4 rounded-lg shadow">
-        <h3 class="text-gray-500 text-sm font-medium mb-2">구매금액별 평균 환불 금액</h3>
+        <h3 class="text-gray-500 text-sm font-medium mb-2">구매금액별 평균 환불 금액(≥¥10)</h3>
         <div class="h-[300px]">
           <Bar
             :data="chartData.refundByPriceAmountChart"
             :options="chartOptions"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- 차트 섹션에 추가 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-8">
+      <!-- ... existing charts ... -->
+
+      <!-- 중복 아이템 차트 -->
+      <div class="bg-white p-4 rounded-lg shadow">
+        <h3 class="text-gray-500 text-sm font-medium mb-2">상품별 중복 주문 횟수 (상위 20개)</h3>
+        <div class="h-[300px]">
+          <Bar
+            :data="chartData.duplicateItemsChart"
+            :options="{
+              ...chartOptions,
+              indexAxis: 'y' as const,
+              scales: {
+                x: {
+                  beginAtZero: true,
+                  ticks: {
+                    stepSize: 1
+                  }
+                }
+              }
+            }"
           />
         </div>
       </div>
@@ -523,7 +538,7 @@ const refundByPriceAnalysis = computed(() => {
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto"></div>
     </div>
 
-    <!-- 에러 메시지 -->
+    <!-- 에 메시지 -->
     <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
       {{ error }}
     </div>
